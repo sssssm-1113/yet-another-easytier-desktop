@@ -1,0 +1,16 @@
+[
+  {
+    "cidr": "10.123.45.1/24",
+    "ipv4": "10.123.45.1",
+    "hostname": "Review-Isolated",
+    "cost": "Local",
+    "lat_ms": "-",
+    "loss_rate": "-",
+    "rx_bytes": "-",
+    "tx_bytes": "-",
+    "tunnel_proto": "-",
+    "nat_type": "Unknown",
+    "id": "1604766427",
+    "version": "2.6.4-8428a89d"
+  }
+]

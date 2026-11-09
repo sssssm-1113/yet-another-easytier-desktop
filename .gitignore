@@ -1,0 +1,22 @@
+# Generated macOS applications and installers
+/dist/
+/.build/
+
+# Local runtime state and credentials
+state.json
+instances/
+*.log
+.env
+.env.*
+!.env.example
+
+# Editor and macOS metadata
+.DS_Store
+.AppleDouble/
+*.swp
+*.swo
+
+# Temporary dependencies and Python caches
+node_modules/
+__pycache__/
+*.pyc

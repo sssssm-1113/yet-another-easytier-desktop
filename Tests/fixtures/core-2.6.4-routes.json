@@ -1,0 +1,17 @@
+[
+  {
+    "ipv4": "10.123.45.1/24",
+    "hostname": "Review-Isolated",
+    "proxy_cidrs": "",
+    "next_hop_ipv4": "-",
+    "next_hop_hostname": "Local",
+    "next_hop_lat": 0.0,
+    "path_len": 0,
+    "path_latency": 0,
+    "next_hop_ipv4_lat_first": "-",
+    "next_hop_hostname_lat_first": "Local",
+    "path_len_lat_first": 0,
+    "path_latency_lat_first": 0,
+    "version": "2.6.4-8428a89d"
+  }
+]
