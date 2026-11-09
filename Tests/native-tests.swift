@@ -78,6 +78,7 @@ func require(_ condition: @autoclosure () -> Bool, _ message: String) {
             if privilegedCalls > 1 && !allowStop { return ["ok": false, "stderr": "authorization cancelled"] }
             return Shell.run("/usr/bin/osascript", ["-e", CoreRuntime.administratorScript(command).replacingOccurrences(of: " with administrator privileges", with: "")], timeout: 15)
         }
+        require(!elevated.launchCommand.contains("nohup") && elevated.launchCommand.contains("trap"), "privileged launch avoids macOS nohup console detachment")
         try elevated.queue.sync { try elevated.start() }
         let elevatedPID = try waitPID(elevatedPIDFile)
         defer { if CoreRuntime.processExists(elevatedPID) { kill(elevatedPID, SIGKILL) } }

@@ -45,9 +45,10 @@ final class CoreRuntime {
     static func quote(_ s: String) -> String { "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'" }
 
     var launchCommand: String {
-        // Only the simple nohup command is backgrounded; its PID survives exec into core.
+        // Ignore SIGHUP in the parent shell; the backgrounded env execs into core.
+        // macOS nohup can fail when authorization has no console to detach from.
         let dir = (configPath as NSString).deletingLastPathComponent
-        return "cd \(Self.quote(dir)) || exit 1; /usr/bin/nohup /usr/bin/env \(Self.quote("RUST_LOG=" + logLevel)) \(Self.quote(corePath)) -c \(Self.quote(configPath)) --rpc-portal 127.0.0.1:\(rpcPort) >> \(Self.quote(logPath)) 2>&1 < /dev/null & echo $!"
+        return "trap '' HUP; cd \(Self.quote(dir)) || exit 1; /usr/bin/env \(Self.quote("RUST_LOG=" + logLevel)) \(Self.quote(corePath)) -c \(Self.quote(configPath)) --rpc-portal 127.0.0.1:\(rpcPort) >> \(Self.quote(logPath)) 2>&1 < /dev/null & echo $!"
     }
 
     static func processExists(_ pid: Int32) -> Bool {
@@ -80,7 +81,7 @@ final class CoreRuntime {
                 throw failure("未取得核心进程号")
             }
             pid = launchedPID
-            // Allow nohup/env to exec before recording the executable identity.
+            // Allow env to exec before recording the executable identity.
             usleep(200_000)
             signature = Self.processSignature(launchedPID)
             guard signature != nil else { throw failure("核心启动后立即退出，请查看运行日志") }

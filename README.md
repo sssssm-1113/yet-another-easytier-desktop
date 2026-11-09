@@ -2,7 +2,7 @@
 
 一个为 macOS 重新设计的 EasyTier 图形客户端。原生 AppKit 外壳负责进程、菜单栏与系统能力，界面使用 HTML/CSS 构建，以获得更自由、更精致的视觉与交互。
 
-> 第三方客户端，非 EasyTier 官方产品。需要本机已安装 `easytier-core` 与 `easytier-cli` 才能连接真实网络；未检测到核心时自动进入演示模式，便于预览完整界面。
+> 第三方客户端，非 EasyTier 官方产品。连接真实网络需要 `easytier-core` 与 `easytier-cli`：内置核心版已包含两者，默认构建版需要另行安装。未检测到核心时自动进入演示模式。
 
 ![EasyTier Desktop](docs/preview.png)
 
@@ -30,7 +30,7 @@
 cd EasyTier
 ./build.sh              # 生成 dist/EasyTier.app（arm64）
 ./build.sh --universal  # 生成 arm64 + x86_64 通用版本
-./build.sh --dmg        # 额外生成 dist/EasyTier-1.0.0.dmg
+./build.sh --dmg        # 额外生成 dist/EasyTier-1.0.1.dmg
 ```
 
 构建仅依赖 Xcode Command Line Tools 中的 `swiftc`，无需安装 Xcode。TOML 解析器随源码打包，正常构建无需联网或安装 npm 依赖。
@@ -94,3 +94,14 @@ EasyTier/
 - 可通过 `ET_DATA_DIR=/临时目录` 隔离应用状态，供调试使用，不影响默认数据目录。
 - `Sources/CoreRuntime.swift`、`Shell.swift`、`LogReader.swift` 分别负责进程生命周期、命令输出及增量日志；`ui/config.js` 负责 TOML 导入、合并和生成。
 - TOML 依赖及许可证见 `ui/vendor/README.md`；重建它使用 `scripts/vendor-toml.sh`。
+
+## 打包内置核心（Apple Silicon）
+
+默认构建不包含 EasyTier 核心。若需制作无需另行下载核心的 arm64 版本：
+
+```bash
+./scripts/fetch-core.sh             # 下载并校验 EasyTier 2.6.4 官方发布包
+./build.sh --bundle-core --dmg      # 输出内置核心的 App 和 EasyTier-1.0.1-bundled.dmg
+```
+
+应用会从包内 `Contents/Resources/bin` 查找核心与 CLI；已手动设置的核心路径仍优先。源码与许可信息见 [EasyTier v2.6.4](https://github.com/EasyTier/EasyTier/tree/v2.6.4)，许可证随打包的核心一起提供。内置核心不会自动授予 TUN 管理员权限。

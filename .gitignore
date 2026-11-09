@@ -20,3 +20,6 @@ instances/
 node_modules/
 __pycache__/
 *.pyc
+
+# Downloaded upstream binaries (build inputs)
+/Resources/bin/

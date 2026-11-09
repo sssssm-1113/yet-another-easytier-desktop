@@ -207,7 +207,7 @@ function seedProfiles() {
   const now = new Date().toISOString();
   return [
     {
-      id: uid(), name: '家庭骨干网', networkName: 'home-mesh', secret: 'home-secret-2026',
+      id: uid(), name: '示例网络', networkName: 'home-mesh', secret: 'home-secret-2026',
       hostname: 'MacBook Pro', ipv4: '10.144.0.1', dhcp: false,
       peers: ['tcp://public.easytier.cn:11010'], listenPort: 11010, rpcPort: 15888,
       proxyNetworks: ['192.168.31.0/24'], exitNodes: [],
@@ -215,26 +215,6 @@ function seedProfiles() {
       disableP2P: false, enableEncryption: true, enableIPv6: false, noTun: false, useSmoltcp: false,
       mtu: 1380, relayWhitelist: '*', devName: '', vpnPortalEnabled: false, vpnPortalListen: '0.0.0.0:11011', vpnPortalCIDR: '10.14.14.0/24',
       tint: 1, autoConnect: true, isSample: true, createdAt: now, lastConnectedAt: null
-    },
-    {
-      id: uid(), name: '工作室 · 上海', networkName: 'studio-shanghai', secret: 'studio-pass-88',
-      hostname: 'Studio-Mac', ipv4: '10.20.0.8', dhcp: false,
-      peers: ['tcp://sh-edge.easytier.cn:11010'], listenPort: 11110, rpcPort: 15889,
-      proxyNetworks: [], exitNodes: [],
-      enableExitNode: false, acceptDNS: false, latencyFirst: false, multiThread: true,
-      disableP2P: false, enableEncryption: true, enableIPv6: true, noTun: false, useSmoltcp: false,
-      mtu: 1380, relayWhitelist: '*', devName: '', vpnPortalEnabled: false, vpnPortalListen: '0.0.0.0:11111', vpnPortalCIDR: '10.14.14.0/24',
-      tint: 0, autoConnect: true, isSample: true, createdAt: now, lastConnectedAt: null
-    },
-    {
-      id: uid(), name: '客户演示环境', networkName: 'demo-lab', secret: 'demo-only',
-      hostname: 'Lab-Mac', ipv4: '10.66.0.2', dhcp: true,
-      peers: ['tcp://public.easytier.cn:11010'], listenPort: 11210, rpcPort: 15890,
-      proxyNetworks: [], exitNodes: [],
-      enableExitNode: false, acceptDNS: true, latencyFirst: false, multiThread: true,
-      disableP2P: true, enableEncryption: true, enableIPv6: false, noTun: false, useSmoltcp: false,
-      mtu: 1300, relayWhitelist: '*', devName: '', vpnPortalEnabled: false, vpnPortalListen: '0.0.0.0:11211', vpnPortalCIDR: '10.14.14.0/24',
-      tint: 2, autoConnect: false, isSample: true, createdAt: now, lastConnectedAt: null
     }
   ];
 }
@@ -1978,7 +1958,7 @@ function renderSettings() {
             <span class="path-name">示例网络</span>
             <span class="path-status"><button class="btn secondary sm" data-action="reset-samples">恢复示例</button></span>
           </div>
-          <div class="path-value">清除当前网络并重新创建 3 个演示用网络配置</div>
+          <div class="path-value">清除当前网络并重新创建 1 个演示用网络配置</div>
         </div>
       </div>
     </div>
@@ -1989,7 +1969,7 @@ function renderSettings() {
         <div class="brand-mark about-mark">${brandGlyph()}</div>
         <div>
           <div class="about-title">EasyTier Desktop</div>
-          <div class="about-sub">版本 ${esc(S.meta.appVersion || '1.0.0')} · 基于 EasyTier Core 的 macOS 图形客户端<br>界面对官方客户端进行了重新设计，网络能力由 EasyTier 提供。</div>
+          <div class="about-sub">版本 ${esc(S.meta.appVersion || '1.0.1')} · 基于 EasyTier Core 的 macOS 图形客户端<br>界面对官方客户端进行了重新设计，网络能力由 EasyTier 提供。</div>
         </div>
         <div class="about-links">
           <button class="btn secondary sm" data-action="open-url" data-url="https://easytier.cn">官网 ${icon('external', 'sm')}</button>
@@ -2520,7 +2500,7 @@ function toggleSetting(key) {
 }
 
 async function resetSamples() {
-  if (!confirm('将清除当前所有网络，并重新创建 3 个示例网络。继续？')) return;
+  if (!confirm('将清除当前所有网络，并重新创建 1 个示例网络。继续？')) return;
   for (const p of S.profiles.slice()) { if (!await disconnect(p)) return; }
   S.profiles = seedProfiles();
   S.runtime = {};
@@ -2623,7 +2603,7 @@ async function boot() {
   try {
     S.meta = await bridge.init();
   } catch (e) {
-    S.meta = { coreAvailable: false, cliAvailable: false, supportDir: '~/Library/Application Support/EasyTier Desktop', hostname: 'Mac', appVersion: '1.0.0' };
+    S.meta = { coreAvailable: false, cliAvailable: false, supportDir: '~/Library/Application Support/EasyTier Desktop', hostname: 'Mac', appVersion: '1.0.1' };
   }
 
   let saved = null;

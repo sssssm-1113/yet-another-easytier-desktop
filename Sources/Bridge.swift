@@ -95,7 +95,7 @@ final class Bridge: NSObject, WKScriptMessageHandler {
         let core = corePath
         let cli = cliPath
         let loginItem = SMAppService.mainApp.status == .enabled
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.1"
         return [
             "supportDir": supportURL.path,
             "coreAvailable": core != nil,

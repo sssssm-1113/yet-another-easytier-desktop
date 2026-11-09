@@ -149,3 +149,11 @@ test('VPN Portal includes its required client CIDR and preserves imported CIDR o
   run("p.vpnPortalCIDR='10.200.0.0/24';var imported=parseTOMLProfile(buildTOML(p));imported.vpnPortalListen='127.0.0.1:12011'");
   assert.equal(run('parseConfigTOML(buildTOML(imported)).vpn_portal_config.client_cidr'),'10.200.0.0/24');
 });
+
+
+test('fresh setup creates exactly one sample without replacing saved networks',()=>{
+  const {run}=harness();
+  assert.equal(run('seedProfiles().length'),1);
+  assert.equal(run('seedProfiles()[0].isSample'),true);
+  assert.equal(run('S.profiles[0].networkName'),'review');
+});

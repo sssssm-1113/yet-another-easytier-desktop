@@ -9,8 +9,14 @@ import Darwin
         let config = dir.appendingPathComponent("smoke.toml")
         let log = dir.appendingPathComponent("core.log")
         FileManager.default.createFile(atPath: log.path, contents: nil)
+        let simulatedElevation = args.contains("--simulate-elevated")
+        let runner: ((String) -> [String: Any])? = simulatedElevation ? { command in
+            let script = CoreRuntime.administratorScript(command).replacingOccurrences(of: " with administrator privileges", with: "")
+            return Shell.run("/usr/bin/osascript", ["-e", script], timeout: 15)
+        } : nil
         let runtime = CoreRuntime(profileId: "real-smoke", corePath: core, configPath: config.path,
-                                  logPath: log.path, rpcPort: port, logLevel: "info", elevated: false)
+                                  logPath: log.path, rpcPort: port, logLevel: "info", elevated: simulatedElevation,
+                                  privilegedRunner: runner)
         try runtime.queue.sync { try runtime.start() }
         defer { try? runtime.queue.sync { try runtime.stop() } }
         var peers: [String: Any] = [:]
