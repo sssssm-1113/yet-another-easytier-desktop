@@ -31,7 +31,7 @@
 cd EasyTier
 ./build.sh              # 生成 dist/EasyTier.app（arm64）
 ./build.sh --universal  # 生成 arm64 + x86_64 通用版本
-./build.sh --dmg        # 额外生成 dist/EasyTier-1.0.2.dmg
+./build.sh --dmg        # 额外生成 dist/EasyTier-1.0.3.dmg
 ```
 
 构建仅依赖 Xcode Command Line Tools 中的 `swiftc`，无需安装 Xcode。TOML 解析器随源码打包，正常构建无需联网或安装 npm 依赖。
@@ -102,7 +102,7 @@ EasyTier/
 
 ```bash
 ./scripts/fetch-core.sh             # 下载并校验 EasyTier 2.6.4 官方发布包
-./build.sh --bundle-core --dmg      # 输出内置核心的 App 和 EasyTier-1.0.2-bundled.dmg
+./build.sh --bundle-core --dmg      # 输出内置核心的 App 和 EasyTier-1.0.3-bundled.dmg
 ```
 
 应用会从包内 `Contents/Resources/bin` 查找核心与 CLI；已手动设置的核心路径仍优先。源码与许可信息见 [EasyTier v2.6.4](https://github.com/EasyTier/EasyTier/tree/v2.6.4)，许可证随打包的核心一起提供。内置核心不会自动授予 TUN 管理员权限。

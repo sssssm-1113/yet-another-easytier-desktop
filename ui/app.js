@@ -2010,7 +2010,7 @@ function renderSettings() {
         <div class="brand-mark about-mark">${brandGlyph()}</div>
         <div>
           <div class="about-title">EasyTier Desktop</div>
-          <div class="about-sub">版本 ${esc(S.meta.appVersion || '1.0.2')} · 基于 EasyTier Core 的 macOS 图形客户端<br>界面对官方客户端进行了重新设计，网络能力由 EasyTier 提供。</div>
+          <div class="about-sub">版本 ${esc(S.meta.appVersion || '1.0.3')} · 基于 EasyTier Core 的 macOS 图形客户端<br>界面对官方客户端进行了重新设计，网络能力由 EasyTier 提供。</div>
         </div>
         <div class="about-links">
           <button class="btn secondary sm" data-action="open-url" data-url="https://easytier.cn">官网 ${icon('external', 'sm')}</button>
@@ -2664,7 +2664,7 @@ async function boot() {
   try {
     S.meta = await bridge.init();
   } catch (e) {
-    S.meta = { coreAvailable: false, cliAvailable: false, supportDir: '~/Library/Application Support/EasyTier Desktop', hostname: 'Mac', appVersion: '1.0.2' };
+    S.meta = { coreAvailable: false, cliAvailable: false, supportDir: '~/Library/Application Support/EasyTier Desktop', hostname: 'Mac', appVersion: '1.0.3' };
   }
 
   let saved = null;

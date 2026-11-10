@@ -58,8 +58,8 @@ if [[ "$DMG" == "1" ]]; then
   STAGE="$(mktemp -d)"
   cp -R "$APP" "$STAGE/"
   ln -s /Applications "$STAGE/Applications"
-  DMG_NAME="EasyTier-1.0.2.dmg"
-  if [[ "$BUNDLE_CORE" == "1" ]]; then DMG_NAME="EasyTier-1.0.2-bundled.dmg"; fi
+  DMG_NAME="EasyTier-1.0.3.dmg"
+  if [[ "$BUNDLE_CORE" == "1" ]]; then DMG_NAME="EasyTier-1.0.3-bundled.dmg"; fi
   rm -f "$ROOT/dist/$DMG_NAME"
   hdiutil create -volname "EasyTier" -srcfolder "$STAGE" -ov -quiet -format UDZO "$ROOT/dist/$DMG_NAME"
   rm -rf "$STAGE"

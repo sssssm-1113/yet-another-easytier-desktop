@@ -85,7 +85,7 @@
       coreVersion: '',
       cliVersion: '',
       loginItem: false,
-      appVersion: '1.0.2',
+      appVersion: '1.0.3',
       supportDir: '~/Library/Application Support/EasyTier Desktop',
       hostname: 'MacBook Pro',
       os: 'macOS (Preview)'
