@@ -21,6 +21,17 @@ const TINTS = [
 ];
 const ACCENTS = ['#3F6DF6', '#10B981', '#7C5CFC', '#E39A1B', '#F2557A', '#0EA5E9'];
 
+const QUICK_OPTIONS = [
+  { key: 'enableEncryption', title: '加密传输', desc: '使用 WireGuard 加密全部流量' },
+  { key: 'enableIPv6', title: 'IPv6 支持', desc: '同时监听 IPv6 地址' },
+  { key: 'latencyFirst', title: '延迟优先', desc: '优先选择低延迟链路' },
+  { key: 'multiThread', title: '多线程传输', desc: '提升高带宽场景吞吐' },
+  { key: 'disableP2P', title: '禁用 P2P', desc: '仅通过中继节点转发' },
+  { key: 'acceptDNS', title: '接受 DNS', desc: '使用网络下发的 DNS 配置' },
+  { key: 'enableExitNode', title: '作为出口节点', desc: '允许其他节点经本机访问公网' },
+  { key: 'noTun', title: '无 TUN 模式', desc: '不创建虚拟网卡（仅代理）' }
+];
+
 const DEFAULT_SETTINGS = {
   theme: 'system',
   accent: 0,
@@ -31,7 +42,8 @@ const DEFAULT_SETTINGS = {
   confirmDisconnect: false,
   launchAtLogin: false,
   showPublic: true,
-  logLevel: 'info'
+  logLevel: 'info',
+  quickOptions: ['disableP2P']
 };
 
 const S = {
@@ -1007,7 +1019,6 @@ function renderOverview() {
             <div class="info-row"><span class="k">加密</span><span class="v">AES-256-GCM · 端到端</span></div>
           </div>
           <div class="quick-grid" style="margin-top:12px">
-            <button class="quick-btn" data-action="diagnose">${icon('activity')}<b>网络诊断</b><span>检查连通性与 NAT</span></button>
             <button class="quick-btn" data-action="open-folder">${icon('folder')}<b>数据目录</b><span>配置与运行日志</span></button>
           </div>
         </div>
@@ -1157,8 +1168,6 @@ function renderDetailHead(p) {
       </div>
       <div class="dh-right">
         ${statusPill(r.status, true)}
-        <button class="iconbtn bordered" data-action="diagnose" title="网络诊断">${icon('activity', 'sm')}</button>
-        <button class="iconbtn bordered" data-action="edit-network" data-id="${p.id}" title="配置">${icon('settings', 'sm')}</button>
         <button class="btn ${running || r.status === 'connecting' ? 'secondary' : 'primary'}" data-action="toggle" data-id="${p.id}">
           ${icon(running ? 'stop' : 'play', 'sm')}
           ${r.status === 'stopping' ? '正在断开…' : r.status === 'connecting' ? '取消连接' : (running || r.coreActive) ? '断开连接' : '连接网络'}
@@ -1273,6 +1282,7 @@ function detailOverview(p) {
     </div>
   </div>
 
+  ${quickControlsHTML(p)}
   <div class="bottom-grid">
     <div class="card">
       <div class="card-head">
@@ -1301,6 +1311,37 @@ function detailOverview(p) {
       </div>
     </div>
   </div>`;
+}
+
+function quickControlsHTML(p) {
+  const selected = Array.isArray(S.settings.quickOptions) ? S.settings.quickOptions : ['disableP2P'];
+  const busy = rt(p.id).saving || ['connecting', 'stopping'].includes(rt(p.id).status);
+  return `<div class="card quick-controls">
+    <div class="card-head"><h3>${icon('settings', 'sm')} 快捷开关</h3><span class="spacer"></span>
+      <button class="link" data-action="quick-customize">${S.ui.quickCustomize ? '完成' : '自定义'}</button></div>
+    <div class="quick-control-body">
+      ${S.ui.quickCustomize ? `<div class="quick-choices">${QUICK_OPTIONS.map(o => `<label><input type="checkbox" data-action="quick-select" data-key="${o.key}" ${selected.includes(o.key) ? 'checked' : ''}> ${o.title}</label>`).join('')}</div>` : ''}
+      ${QUICK_OPTIONS.filter(o => selected.includes(o.key)).map(o => `<div class="switch-row"><div class="sw-text"><div class="sw-title">${o.title}</div><div class="sw-desc">${o.desc}</div></div><button class="switch ${p[o.key] ? 'on' : ''}" role="switch" aria-checked="${!!p[o.key]}" aria-label="${o.title}" data-action="quick-toggle" data-id="${p.id}" data-key="${o.key}" ${busy ? 'disabled' : ''}></button></div>`).join('') || '<div class="quick-empty">点击“自定义”添加快捷开关</div>'}
+      <div class="quick-hint">连接中修改开关会短暂断开并重新连接。</div>
+    </div>
+  </div>`;
+}
+
+async function toggleQuickOption(p, key) {
+  if (!p || !QUICK_OPTIONS.some(o => o.key === key)) return;
+  const r = rt(p.id);
+  if (r.saving || ['connecting', 'stopping'].includes(r.status)) return;
+  const active = r.coreActive || r.status === 'running';
+  r.saving = true;
+  renderView(true);
+  try {
+    if (active && !await disconnect(p)) return;
+    p[key] = !p[key];
+    persist();
+    renderAll();
+    if (active) { toast('配置已保存，正在重新连接', 'ok'); await connect(p); }
+    else toast('配置已保存', 'ok');
+  } finally { r.saving = false; renderView(true); }
 }
 
 function statCard(ic, label, value, foot) {
@@ -1969,7 +2010,7 @@ function renderSettings() {
         <div class="brand-mark about-mark">${brandGlyph()}</div>
         <div>
           <div class="about-title">EasyTier Desktop</div>
-          <div class="about-sub">版本 ${esc(S.meta.appVersion || '1.0.1')} · 基于 EasyTier Core 的 macOS 图形客户端<br>界面对官方客户端进行了重新设计，网络能力由 EasyTier 提供。</div>
+          <div class="about-sub">版本 ${esc(S.meta.appVersion || '1.0.2')} · 基于 EasyTier Core 的 macOS 图形客户端<br>界面对官方客户端进行了重新设计，网络能力由 EasyTier 提供。</div>
         </div>
         <div class="about-links">
           <button class="btn secondary sm" data-action="open-url" data-url="https://easytier.cn">官网 ${icon('external', 'sm')}</button>
@@ -2088,7 +2129,18 @@ function renderSheet() {
   const root = $('#overlay-root');
   if (!S.sheet) { root.innerHTML = ''; return; }
   if (S.sheet.type === 'add') { root.innerHTML = sheetAddHTML(); return; }
-  if (S.sheet.type === 'diag') { root.innerHTML = sheetDiagHTML(); return; }
+  if (S.sheet.type === 'diag') {
+    const existing = root.querySelector('.overlay');
+    if (!existing || existing.dataset.sheetType !== 'diag') {
+      root.innerHTML = sheetDiagHTML();
+      root.querySelector('.overlay').dataset.sheetType = 'diag';
+    } else {
+      const template = document.createElement('template');
+      template.innerHTML = sheetDiagHTML();
+      existing.querySelector('.sheet').innerHTML = template.content.querySelector('.sheet').innerHTML;
+    }
+    return;
+  }
   root.innerHTML = '';
 }
 
@@ -2279,6 +2331,15 @@ document.addEventListener('click', (e) => {
       break;
     }
     case 'diagnose': openDiagnostics(); break;
+    case 'quick-customize': S.ui.quickCustomize = !S.ui.quickCustomize; renderView(true); break;
+    case 'quick-select': {
+      const key = target.dataset.key;
+      if (!QUICK_OPTIONS.some(o => o.key === key)) break;
+      const selected = Array.isArray(S.settings.quickOptions) ? S.settings.quickOptions : ['disableP2P'];
+      S.settings.quickOptions = target.checked ? [...new Set([...selected, key])] : selected.filter(x => x !== key);
+      persist(); renderView(true); break;
+    }
+    case 'quick-toggle': toggleQuickOption(p, target.dataset.key); break;
     case 'new-network': openAddSheet('public'); break;
     case 'import-config': openAddSheet('import'); break;
     case 'open-folder': bridge.openFolder(); break;
@@ -2603,7 +2664,7 @@ async function boot() {
   try {
     S.meta = await bridge.init();
   } catch (e) {
-    S.meta = { coreAvailable: false, cliAvailable: false, supportDir: '~/Library/Application Support/EasyTier Desktop', hostname: 'Mac', appVersion: '1.0.1' };
+    S.meta = { coreAvailable: false, cliAvailable: false, supportDir: '~/Library/Application Support/EasyTier Desktop', hostname: 'Mac', appVersion: '1.0.2' };
   }
 
   let saved = null;

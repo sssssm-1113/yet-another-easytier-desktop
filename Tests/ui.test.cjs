@@ -157,3 +157,25 @@ test('fresh setup creates exactly one sample without replacing saved networks',(
   assert.equal(run('seedProfiles()[0].isSample'),true);
   assert.equal(run('S.profiles[0].networkName'),'review');
 });
+
+test('quick setting saves only after disconnect succeeds and reconnects with new value',async()=>{
+  const {run,bridge}=harness(); let starts=0;
+  bridge.stopCore=async()=>({ok:false,error:'failed'});
+  await run("toggleQuickOption(p,'disableP2P')");
+  assert.equal(run('p.disableP2P'),false);
+  bridge.stopCore=async()=>({ok:true}); bridge.startCore=async()=>{starts++;return {ok:true}};
+  await run("toggleQuickOption(p,'disableP2P')");
+  assert.equal(run('p.disableP2P'),true); assert.equal(starts,1);
+});
+
+test('all network options can be selected for the overview and saved in TOML',async()=>{
+  const {run}=harness();
+  assert.deepEqual(plain(run('QUICK_OPTIONS.map(o=>o.key)')), ['enableEncryption','enableIPv6','latencyFirst','multiThread','disableP2P','acceptDNS','enableExitNode','noTun']);
+  run("r.status='stopped';r.coreActive=false");
+  for(const key of plain(run('QUICK_OPTIONS.map(o=>o.key)'))) {
+    const before=run(`!!p[${JSON.stringify(key)}]`);
+    await run(`toggleQuickOption(p,${JSON.stringify(key)})`);
+    assert.equal(run(`!!p[${JSON.stringify(key)}]`),!before);
+    assert.equal(run(`parseTOMLProfile(buildTOML(p))[${JSON.stringify(key)}]`),!before);
+  }
+});

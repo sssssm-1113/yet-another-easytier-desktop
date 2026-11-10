@@ -17,6 +17,7 @@
 - **配置编辑**：完整暴露 EasyTier 配置项（DHCP、监听端口、MTU、加密、IPv6、延迟优先、多线程、禁用 P2P、退出节点、子网代理、VPN Portal、中继白名单等），实时生成 TOML 预览，可复制、导入与导出。
 - **运行日志**：解析核心日志的级别与模块，支持级别过滤、搜索、自动滚动与一键复制。
 - **网络诊断**：核心、RPC、配置、NAT、P2P 五项检查。
+- **快捷开关**：网络总览可自定义显示全部八项网络选项；修改已连接网络时会重新连接。
 - **界面**：浅色 / 深色 / 跟随系统，六种强调色，⌘1 / ⌘, / ⌘N / ⌘R 等快捷键。
 
 ## 系统要求
@@ -30,7 +31,7 @@
 cd EasyTier
 ./build.sh              # 生成 dist/EasyTier.app（arm64）
 ./build.sh --universal  # 生成 arm64 + x86_64 通用版本
-./build.sh --dmg        # 额外生成 dist/EasyTier-1.0.1.dmg
+./build.sh --dmg        # 额外生成 dist/EasyTier-1.0.2.dmg
 ```
 
 构建仅依赖 Xcode Command Line Tools 中的 `swiftc`，无需安装 Xcode。TOML 解析器随源码打包，正常构建无需联网或安装 npm 依赖。
@@ -58,7 +59,7 @@ cd EasyTier
 
 ## 权限说明
 
-创建 TUN 网卡需要管理员权限。开启「以管理员权限运行」后，连接时会通过系统授权对话框启动核心；关闭后以当前用户运行，适用于 `no_tun` 等场景。应用本身不安装常驻特权 helper。
+创建 TUN 网卡需要管理员权限。开启「以管理员权限运行」后，连接时会通过系统授权对话框启动核心；关闭后以当前用户运行，适用于 `no_tun` 等场景。断开时由已授权的进程结束核心，通常无需再次授权；每次重新连接仍需要系统授权。应用本身不安装常驻特权 helper。
 
 ## 说明
 
@@ -101,7 +102,7 @@ EasyTier/
 
 ```bash
 ./scripts/fetch-core.sh             # 下载并校验 EasyTier 2.6.4 官方发布包
-./build.sh --bundle-core --dmg      # 输出内置核心的 App 和 EasyTier-1.0.1-bundled.dmg
+./build.sh --bundle-core --dmg      # 输出内置核心的 App 和 EasyTier-1.0.2-bundled.dmg
 ```
 
 应用会从包内 `Contents/Resources/bin` 查找核心与 CLI；已手动设置的核心路径仍优先。源码与许可信息见 [EasyTier v2.6.4](https://github.com/EasyTier/EasyTier/tree/v2.6.4)，许可证随打包的核心一起提供。内置核心不会自动授予 TUN 管理员权限。

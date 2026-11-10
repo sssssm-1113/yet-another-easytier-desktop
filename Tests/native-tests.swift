@@ -71,23 +71,19 @@ func require(_ condition: @autoclosure () -> Bool, _ message: String) {
         try direct.queue.sync { try direct.stop() }
         require(!CoreRuntime.processExists(directPID), "direct stop waits for a TERM-resistant core to exit")
 
-        var allowStop = false
         var privilegedCalls = 0
         let (elevated, elevatedPIDFile) = try fixture("elevated", mode: "normal", elevated: true) { command in
             privilegedCalls += 1
-            if privilegedCalls > 1 && !allowStop { return ["ok": false, "stderr": "authorization cancelled"] }
             return Shell.run("/usr/bin/osascript", ["-e", CoreRuntime.administratorScript(command).replacingOccurrences(of: " with administrator privileges", with: "")], timeout: 15)
         }
         require(!elevated.launchCommand.contains("nohup") && elevated.launchCommand.contains("trap"), "privileged launch avoids macOS nohup console detachment")
         try elevated.queue.sync { try elevated.start() }
         let elevatedPID = try waitPID(elevatedPIDFile)
         defer { if CoreRuntime.processExists(elevatedPID) { kill(elevatedPID, SIGKILL) } }
-        do { try elevated.queue.sync { try elevated.stop() }; require(false, "cancelled authorization must throw") }
-        catch { require(CoreRuntime.processExists(elevatedPID), "cancelled authorization leaves core owned and running") }
-        allowStop = true
         try elevated.queue.sync { try elevated.stop() }
         let state = Shell.run("/bin/ps", ["-p", String(elevatedPID), "-o", "stat="])["stdout"] as? String ?? ""
-        require(state.isEmpty || state.contains("Z"), "privileged launch records actual core PID and retry stops it")
+        require(state.isEmpty || state.contains("Z"), "privileged core stops without another authorization")
+        require(privilegedCalls == 1, "disconnect never requests authorization again")
 
         let (exiting, _) = try fixture("exit", mode: "exit", elevated: false)
         let exited = DispatchSemaphore(value: 0)

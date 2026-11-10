@@ -17,6 +17,8 @@ final class CoreRuntime {
     private var signature: String?
     private var logHandle: FileHandle?
     private var monitor: DispatchSourceTimer?
+    private var guardian: Process?
+    private var guardianInput: FileHandle?
     private var finished = false
     private let privilegedRunner: (String) -> [String: Any]
 
@@ -48,7 +50,23 @@ final class CoreRuntime {
         // Ignore SIGHUP in the parent shell; the backgrounded env execs into core.
         // macOS nohup can fail when authorization has no console to detach from.
         let dir = (configPath as NSString).deletingLastPathComponent
-        return "trap '' HUP; cd \(Self.quote(dir)) || exit 1; /usr/bin/env \(Self.quote("RUST_LOG=" + logLevel)) \(Self.quote(corePath)) -c \(Self.quote(configPath)) --rpc-portal 127.0.0.1:\(rpcPort) >> \(Self.quote(logPath)) 2>&1 < /dev/null & echo $!"
+        let launch = "trap '' HUP; cd \(Self.quote(dir)) || exit 1; /usr/bin/env \(Self.quote("RUST_LOG=" + logLevel)) \(Self.quote(corePath)) -c \(Self.quote(configPath)) --rpc-portal 127.0.0.1:\(rpcPort) >> \(Self.quote(logPath)) 2>&1 < /dev/null & core=$!"
+        guard let guardian, let guardianSignature = Self.processSignature(guardian.processIdentifier) else { return launch + "; echo $core" }
+        return launch + """
+        ; ( /bin/sleep 0.2
+          core_signature="$(/bin/ps -p "$core" -o lstart= -o command=)"
+          while [ "$(/bin/ps -p \(guardian.processIdentifier) -o lstart= -o command=)" = \(Self.quote(guardianSignature)) ]; do
+            [ "$(/bin/ps -p "$core" -o lstart= -o command=)" = "$core_signature" ] || exit 0
+            /bin/sleep 0.2
+          done
+          [ -n "$core_signature" ] || exit 0
+          [ "$(/bin/ps -p "$core" -o lstart= -o command=)" = "$core_signature" ] || exit 0
+          /bin/kill -TERM "$core" 2>/dev/null || exit 0
+          /bin/sleep 1
+          [ "$(/bin/ps -p "$core" -o lstart= -o command=)" = "$core_signature" ] && /bin/kill -KILL "$core" 2>/dev/null
+        ) </dev/null >/dev/null 2>&1 & echo $core
+        """
+
     }
 
     static func processExists(_ pid: Int32) -> Bool {
@@ -74,17 +92,29 @@ final class CoreRuntime {
 
     func start() throws {
         if elevated {
+            let pipe = Pipe()
+            let watcher = Process()
+            watcher.executableURL = URL(fileURLWithPath: "/bin/cat")
+            watcher.standardInput = pipe
+            watcher.standardOutput = FileHandle.nullDevice
+            watcher.standardError = FileHandle.nullDevice
+            try watcher.run()
+            try? pipe.fileHandleForReading.close()
+            guardian = watcher
+            guardianInput = pipe.fileHandleForWriting
             let result = privilegedRunner(launchCommand)
-            try check(result, fallback: "管理员授权失败或已取消")
+            do { try check(result, fallback: "管理员授权失败或已取消") }
+            catch { stopGuardian(); throw error }
             guard let text = result["stdout"] as? String,
                   let launchedPID = Int32(text.trimmingCharacters(in: .whitespacesAndNewlines)), launchedPID > 1 else {
+                stopGuardian()
                 throw failure("未取得核心进程号")
             }
             pid = launchedPID
             // Allow env to exec before recording the executable identity.
             usleep(200_000)
             signature = Self.processSignature(launchedPID)
-            guard signature != nil else { throw failure("核心启动后立即退出，请查看运行日志") }
+            guard signature != nil else { stopGuardian(); throw failure("核心启动后立即退出，请查看运行日志") }
         } else {
             let p = Process()
             p.executableURL = URL(fileURLWithPath: corePath)
@@ -122,31 +152,36 @@ final class CoreRuntime {
             while process.isRunning && Date() < deadline { usleep(20_000) }
             if process.isRunning { kill(process.processIdentifier, SIGKILL) }
             process.waitUntilExit()
+        } else if guardian != nil {
+            stopGuardian()
+            let deadline = Date().addingTimeInterval(5)
+            while isAlive() && Date() < deadline { usleep(50_000) }
         } else if let pid, let signature {
-            // Recheck the process identity in the privileged shell before sending signals.
+            // Fallback on retry if the guardian failed to stop the owned process.
             let command = """
-            alive() {
-              [ "$(/bin/ps -p \(pid) -o lstart= -o command=)" = \(Self.quote(signature)) ] || return 1
-              case "$(/bin/ps -p \(pid) -o stat=)" in *Z*|'') return 1;; esac
-              return 0
-            }
-            if alive; then /bin/kill -TERM \(pid) || exit 1; fi
-            i=0
-            while alive && [ "$i" -lt 30 ]; do /bin/sleep 0.1; i=$((i+1)); done
-            if alive; then /bin/kill -KILL \(pid) || exit 1; fi
-            i=0
-            while alive && [ "$i" -lt 20 ]; do /bin/sleep 0.1; i=$((i+1)); done
-            if alive; then echo '核心未能停止' >&2; exit 1; fi
+            [ "$(/bin/ps -p \(pid) -o lstart= -o command=)" = \(Self.quote(signature)) ] || exit 0
+            /bin/kill -TERM \(pid) || exit 1
+            /bin/sleep 1
+            [ "$(/bin/ps -p \(pid) -o lstart= -o command=)" = \(Self.quote(signature)) ] && /bin/kill -KILL \(pid) || true
             """
             try check(privilegedRunner(command), fallback: "停止核心失败或管理员授权已取消")
         }
+
         guard !isAlive() else { throw failure("核心仍在运行，请重试断开") }
         finish(0)
+    }
+
+    private func stopGuardian() {
+        try? guardianInput?.close()
+        guardianInput = nil
+        if let guardian, guardian.isRunning { guardian.waitUntilExit() }
+        guardian = nil
     }
 
     private func finish(_ code: Int32) {
         guard !finished else { return }
         finished = true
+        stopGuardian()
         monitor?.cancel()
         monitor = nil
         try? logHandle?.close()
