@@ -21,10 +21,11 @@ final class CoreRuntime {
     private var guardianInput: FileHandle?
     private var finished = false
     private let privilegedRunner: (String) -> [String: Any]
+    private let privilegeSession: PrivilegeSession?
 
     init(profileId: String, corePath: String, configPath: String, logPath: String,
          rpcPort: Int, logLevel: String, elevated: Bool,
-         privilegedRunner: ((String) -> [String: Any])? = nil) {
+         privilegedRunner: ((String) -> [String: Any])? = nil, privilegeSession: PrivilegeSession? = nil) {
         self.profileId = profileId
         self.corePath = corePath
         self.configPath = configPath
@@ -32,6 +33,7 @@ final class CoreRuntime {
         self.rpcPort = rpcPort
         self.logLevel = logLevel
         self.elevated = elevated
+        self.privilegeSession = privilegeSession
         self.privilegedRunner = privilegedRunner ?? { command in
             return Shell.run("/usr/bin/osascript", ["-e", Self.administratorScript(command)], timeout: nil)
         }
@@ -91,7 +93,14 @@ final class CoreRuntime {
     }
 
     func start() throws {
-        if elevated {
+        if elevated, let session = privilegeSession {
+            let response = try session.request(["action": "start", "id": profileId, "port": rpcPort, "level": logLevel])
+            guard response["ok"] as? Bool == true, let launchedPID = response["pid"] as? Int, launchedPID > 1 else { throw failure(response["error"] as? String ?? "未取得核心进程号") }
+            pid = Int32(launchedPID)
+            usleep(200_000)
+            signature = Self.processSignature(Int32(launchedPID))
+            guard signature != nil else { _ = try? session.request(["action": "stop", "id": profileId]); throw failure("核心启动后立即退出，请查看运行日志") }
+        } else if elevated {
             let pipe = Pipe()
             let watcher = Process()
             watcher.executableURL = URL(fileURLWithPath: "/bin/cat")
@@ -152,6 +161,9 @@ final class CoreRuntime {
             while process.isRunning && Date() < deadline { usleep(20_000) }
             if process.isRunning { kill(process.processIdentifier, SIGKILL) }
             process.waitUntilExit()
+        } else if let session = privilegeSession {
+            let response = try session.request(["action": "stop", "id": profileId])
+            guard response["ok"] as? Bool == true else { throw failure(response["error"] as? String ?? "停止核心失败") }
         } else if guardian != nil {
             stopGuardian()
             let deadline = Date().addingTimeInterval(5)

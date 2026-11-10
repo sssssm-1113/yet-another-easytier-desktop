@@ -9,5 +9,5 @@ node "$ROOT/Tests/real-core-config.cjs" "$TMP"
 "$CORE" -c "$TMP/vpn-false.toml" --check-config
 "$CORE" -c "$TMP/vpn-true.toml" --check-config
 PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')"
-swiftc "$ROOT/Sources/CoreRuntime.swift" "$ROOT/Sources/Shell.swift" "$ROOT/Tests/real-core-smoke.swift" -o "$TMP/smoke-test"
+swiftc "$ROOT/Sources/PrivilegeSession.swift" "$ROOT/Sources/CoreRuntime.swift" "$ROOT/Sources/Shell.swift" "$ROOT/Tests/real-core-smoke.swift" -o "$TMP/smoke-test"
 "$TMP/smoke-test" "$CORE" "$CLI" "$TMP" "$PORT" "${3:-}"

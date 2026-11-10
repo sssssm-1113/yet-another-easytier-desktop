@@ -11,6 +11,7 @@ final class Bridge: NSObject, WKScriptMessageHandler {
     private let supportURL: URL
     private let instancesURL: URL
     private var runtimes: [String: CoreRuntime] = [:]
+    private var privilegeSession: PrivilegeSession?
 
     override init() {
         let defaultBase = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -42,6 +43,8 @@ final class Bridge: NSObject, WKScriptMessageHandler {
             respond(id, ["data": loadState() ?? NSNull()])
         case "saveState":
             respond(id, ["ok": saveState(body["data"] as? String ?? "")])
+        case "preparePrivilege":
+            preparePrivilege(id: id)
         case "startCore":
             startCore(body, id: id)
         case "stopCore":
@@ -174,6 +177,24 @@ final class Bridge: NSObject, WKScriptMessageHandler {
 
     // MARK: - Core process
 
+    private func sessionForCore(_ core: String) -> PrivilegeSession {
+        if let session = privilegeSession { return session }
+        let session = PrivilegeSession(corePath: core, instancesPath: instancesURL.path)
+        privilegeSession = session
+        return session
+    }
+
+    func closePrivilegeSession() { privilegeSession?.closeSession(); privilegeSession = nil }
+
+    private func preparePrivilege(id: Int) {
+        guard let core = corePath else { respond(id, ["error": "未找到 easytier-core"]); return }
+        let session = sessionForCore(core)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            do { try session.prepare(); DispatchQueue.main.async { self?.respond(id, ["ok": true]) } }
+            catch { DispatchQueue.main.async { self?.respond(id, ["error": error.localizedDescription]) } }
+        }
+    }
+
     private func startCore(_ body: [String: Any], id: Int) {
         guard let profileId = body["profileId"] as? String,
               let config = body["config"] as? String,
@@ -208,7 +229,9 @@ final class Bridge: NSObject, WKScriptMessageHandler {
             return
         }
 
-        let runtime = CoreRuntime(profileId: profileId, corePath: core, configPath: configURL.path, logPath: logURL.path, rpcPort: rpcPort, logLevel: logLevel, elevated: elevated)
+        let session = elevated ? sessionForCore(core) : nil
+        guard session == nil || session?.corePath == core else { respond(id, ["error": "核心路径已更改，请退出并重新打开软件后连接"]); return }
+        let runtime = CoreRuntime(profileId: profileId, corePath: core, configPath: configURL.path, logPath: logURL.path, rpcPort: rpcPort, logLevel: logLevel, elevated: elevated, privilegeSession: session)
         runtime.onExit = { [weak self, weak runtime] code in
             DispatchQueue.main.async {
                 guard let self, let runtime, self.runtimes[profileId] === runtime else { return }

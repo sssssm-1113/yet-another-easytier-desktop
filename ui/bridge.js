@@ -49,6 +49,7 @@
     init: () => call('init'),
     loadState: () => call('loadState'),
     saveState: (data) => call('saveState', { data }),
+    preparePrivilege: () => call('preparePrivilege', {}, 0),
     startCore: (p) => call('startCore', p, 0),
     stopCore: (p) => call('stopCore', p, 0),
     cli: (p) => call('cli', p, 15000),
@@ -77,6 +78,7 @@
   const KEY = 'easytier.preview.state';
 
   const mock = Object.assign({}, api, {
+    preparePrivilege: async () => ({ ok: true }),
     init: async () => ({
       coreAvailable: false,
       cliAvailable: false,

@@ -1971,7 +1971,7 @@ function renderSettings() {
           </div>
           <div class="path-value ${S.meta.cliAvailable ? '' : 'muted'}">${esc(S.meta.cliAvailable ? S.meta.cliPath : '未找到 · 与 easytier-core 通常位于同一目录')}</div>
         </div>
-        ${settingsSwitch('以管理员权限运行', '创建 TUN 网卡需要 root 权限，连接时会请求授权', 'runAsRoot', S.settings.runAsRoot)}
+        ${settingsSwitch('以管理员权限运行', '创建 TUN 网卡需要管理员权限；启动时授权一次', 'runAsRoot', S.settings.runAsRoot)}
         <div class="apply-note" style="margin:2px 16px 12px">${icon('info', 'sm')}<span>${S.meta.coreAvailable && S.meta.cliAvailable ? '核心已就绪，连接时将使用本机 EasyTier 进程运行网络。' : '未检测到 EasyTier Core，当前界面使用演示数据。安装 EasyTier 并选择上方二进制路径后，即可连接真实网络。'}</span></div>
         <div class="field-row" style="border-top:1px solid var(--line-soft)">
           <span class="field-label">核心日志级别</span>
@@ -2735,6 +2735,10 @@ async function boot() {
 
   if (pv && pv.sheet === 'add') setTimeout(() => openAddSheet('public'), 500);
   if (pv && pv.sheet === 'diag') setTimeout(() => openDiagnostics(), 800);
+
+  if (S.settings.runAsRoot && S.meta.coreAvailable && !isDemo() && !pv) {
+    bridge.preparePrivilege().catch(() => { toast("管理员授权未完成，连接时可重试", "err"); });
+  }
 
   if (S.settings.autoConnectOnLaunch) {
     const targets = S.profiles.filter(p => p.autoConnect && (!p.isSample || isDemo()));
